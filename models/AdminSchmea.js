@@ -53,15 +53,17 @@ try{
 AdminSchema.statics.GenerateTokenAndPasswordCheck = async function (email, password) {
   try {
       // Find user by email
+      console.log("GenerateTokenAndPassworedCheck is called ")
       const user = await this.findOne({ email });
       if (!user) throw new Error('User Not Found'); // Throw error if user not found
 
-      // Compare provided password with hashed password
-      const isMatch = await bcrypt.compare(password, user.password);
+       console.log("checking match ")
+      const isMatch = await bcrypt.compare(password, user.hashedPassword);
       if (isMatch) {
         const token =createTokenforUser(user);
         return token;
       } else {
+        console.log("not match")
           throw new Error("Invalid password"); // Properly throwing an error for incorrect password
       }
   } catch (error) {

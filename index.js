@@ -1,13 +1,25 @@
 const express =require("express");
 const app =express();
 const Admin=require('./models/AdminSchmea');
-
+const nodemailer = require('nodemailer');
+const User=require('./models/UserSchema')
 const cors=require('cors');
+require('dotenv').config();
 
 app.use(cors());
 
 
-const { mongoose } = require("mongoose")
+const otpStore = {}; // 
+const { mongoose } = require("mongoose");
+const { checkAuthentication } = require("./middelware/authicationServices");
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 mongoose.connect('mongodb://localhost:27017/StudenManager').then(async()=>{
   console.log("connected to DataBase");
@@ -31,30 +43,88 @@ mongoose.connect('mongodb://localhost:27017/StudenManager').then(async()=>{
 const port=5000;
 
 app.use(express.json()); // <-- make sure to parse incoming JSON
-
-
+app.use(express.urlencoded({ extended: true }));
+app.use(checkAuthentication("token"))
 app.post('/login',async(req,res)=>{
   try{
-    const {email,password} =req.body();
+    console.log("login API is called ")
+    const {email,password} =req.body;
     console.log("email"+email);
     console.log("password"+password);
     const token = await Admin.GenerateTokenAndPasswordCheck(email,password);
 
-    console.log(token);
+    res.status(200).json({"Token":token});
 
   }catch(error){
-    res.send(500).json("Internal Server Error")
+    res.status(500).json("Internal Server Error")
   }
 
 })
 
-app.post('/user',()=>{
-  console.log("user route is called ");
+app.post('/user/register', async (req, res) => {
+  const { email } = req.body;
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  otpStore[email] = {
+    otp,
+    userData: req.body
+  };
+
+  try {
+    await transporter.sendMail({
+      from: 'Random@gmail.com',
+      to: email,
+      subject: 'Verify your email',
+      text: `Your OTP is: ${otp}`
+    });
+
+    res.json({ success: true, message: 'OTP sent to email' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+  }
+});
+
+
+// Verify OTP
+app.post('/user/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  const data = otpStore[email];
+  console.log("data is "+data);
+  console.log("otp"+otp);
+
+  if (data && data.otp === otp) {
+    try {
+      const newUser = new User(data.userData);
+      await newUser.save();
+
+      delete otpStore[email]; // Clean up
+      res.json({ verified: true, message: 'User registered successfully' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ verified: false, message: 'Error saving user' });
+    }
+  } else {
+    res.json({ verified: false, message: 'Invalid OTP' });
+  }
 });
 
 
 
+app.get('/fetchdata',async(req,res)=>{
+ try{
+  console.log("fetchdata is called ");
+  const token=req.params.token;
+  console.log("Token is "+token);
+  const data = await User.find({}, { name: 1, email: 1, phoneNumber: 1 });
 
+  res.status(200).json(data);
+ }catch(err){
+  res.status(500).send("Internal Server Error")
+ }
+
+}
+)
 
 
 

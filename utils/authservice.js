@@ -10,7 +10,8 @@ function createTokenforUser(user){
    role:user.role
   }
   const token=Jwt.sign(payload,secret);
-  return token;
+  console.log("Token inside the createTokenForUser"+token)
+     return token;
 }
 
 function validateToken(token){
