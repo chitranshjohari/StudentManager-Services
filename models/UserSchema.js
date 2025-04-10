@@ -13,10 +13,7 @@ const UserSchema= new mongoose.Schema({
  phoneNumber:{
   type:Number,
  },
- password:{
-  type:String,
-  required:true
- },
+
  role:{
   type:String,
   default:"Stduent"

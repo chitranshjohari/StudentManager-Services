@@ -4,9 +4,9 @@ const Admin=require('./models/AdminSchmea');
 const nodemailer = require('nodemailer');
 const User=require('./models/UserSchema')
 const cors=require('cors');
-require('dotenv').config();
 
 app.use(cors());
+require('dotenv').config();
 
 
 const otpStore = {}; // 
@@ -72,7 +72,7 @@ app.post('/user/register', async (req, res) => {
 
   try {
     await transporter.sendMail({
-      from: 'Random@gmail.com',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Verify your email',
       text: `Your OTP is: ${otp}`
@@ -111,20 +111,22 @@ app.post('/user/verify-otp', async (req, res) => {
 
 
 
-app.get('/fetchdata',async(req,res)=>{
- try{
-  console.log("fetchdata is called ");
-  const token=req.params.token;
-  console.log("Token is "+token);
-  const data = await User.find({}, { name: 1, email: 1, phoneNumber: 1 });
+app.get('/fetchdata', async (req, res) => {
+  try {
+    console.log("fetchdata is called ");
+    const token = req.query.token; // or use req.headers.token / req.body.token based on how you're sending it
+    console.log("Token is " + token);
 
-  res.status(200).json(data);
- }catch(err){
-  res.status(500).send("Internal Server Error")
- }
+    const data = await User.find({}, { name: 1, email: 1, phoneNumber: 1, _id: 1});
+    console.log("userdata is", data);
+    
+    res.status(200).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
+  }
+});
 
-}
-)
 
 
 
